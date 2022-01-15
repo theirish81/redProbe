@@ -19,13 +19,14 @@ func main() {
 	headers := getopt.ListLong("header", 'H', "The headers")
 	timeout := getopt.StringLong("timeout", 't', "5s", "The request timeout")
 	format := getopt.StringLong("format", 'f', "console", "The output format, either 'console' or 'JSON'")
+	assertions := getopt.ListLong("assertion", 'A', "Assertion")
 	config := getopt.StringLong("config", 'c', "", "Path to a config file")
 	getopt.HelpColumn = 50
 	getopt.Parse()
 	if *config != "" {
 		cliConfig(*config)
 	} else {
-		cli(*method, *url, *headers, readBody(), *timeout, *format)
+		cli(*method, *url, *headers, readBody(), *timeout, *assertions, *format)
 	}
 }
 
@@ -47,7 +48,7 @@ func cliConfig(path string) {
 		fmt.Println("Error reading the configuration file: ", err.Error())
 		os.Exit(1)
 	}
-	req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, "console")
+	req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, []string{}, "console")
 	err = yaml.Unmarshal(data, &req)
 	if err != nil {
 		fmt.Println("Error reading the configuration file: ", err.Error())
@@ -57,7 +58,7 @@ func cliConfig(path string) {
 }
 
 // cli runs the command line probe using the parameters passed in the command line
-func cli(method string, urlString string, headers []string, body []byte, timeout string, format string) {
+func cli(method string, urlString string, headers []string, body []byte, timeout string, assertions []string, format string) {
 	if urlString == "" {
 		getopt.PrintUsage(os.Stdout)
 		return
@@ -67,7 +68,7 @@ func cli(method string, urlString string, headers []string, body []byte, timeout
 		fmt.Println("Could not parse timeout")
 		os.Exit(1)
 	}
-	requester := newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, strings.ToLower(format))
+	requester := newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, assertions, strings.ToLower(format))
 	run(requester)
 }
 
@@ -84,6 +85,9 @@ func run(requester Requester) {
 		fmt.Println(string(data))
 	default:
 		printOutcomeToCLI(outcome)
+	}
+	if !outcome.isSuccess() {
+		os.Exit(1)
 	}
 }
 

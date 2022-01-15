@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/antonmedv/expr"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -39,12 +42,13 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 // Requester is the agent performing the request
 type Requester struct {
-	Method  string            `json:"method" yaml:"method"`
-	Url     string            `json:"url" yaml:"url"`
-	Headers map[string]string `json:"headers" yaml:"headers"`
-	Body    string            `json:"body" yaml:"body"`
-	Timeout Duration          `json:"timeout" yaml:"timeout"`
-	Format  string            `json:"format" yaml:"format"`
+	Method     string            `json:"method" yaml:"method"`
+	Url        string            `json:"url" yaml:"url"`
+	Headers    map[string]string `json:"headers" yaml:"headers"`
+	Body       string            `json:"body" yaml:"body"`
+	Timeout    Duration          `json:"timeout" yaml:"timeout"`
+	Format     string            `json:"format" yaml:"format"`
+	Assertions []string          `json:"assertions" yaml:"assertions"`
 }
 
 // Outcome is the result of the conversation
@@ -53,6 +57,20 @@ type Outcome struct {
 	StatusCode int       `json:"statusCode"`
 	Metrics    Metrics   `json:"metrics"`
 	Err        error     `json:"error"`
+	Checks     []Check   `json:"checks"`
+}
+
+// isSuccess will return true when no errors happened during the call, and all assertions passed
+func (o *Outcome) isSuccess() bool {
+	if o.Err != nil {
+		return false
+	}
+	for _, check := range o.Checks {
+		if !check.Success {
+			return false
+		}
+	}
+	return true
 }
 
 // Metrics are the collected metrics
@@ -64,9 +82,16 @@ type Metrics struct {
 	Transfer time.Duration `json:"transfer"`
 }
 
+// Check is the result of an assertion execution
+type Check struct {
+	Success   bool        `json:"success"`
+	Output    interface{} `json:"output"`
+	Assertion string      `json:"assertion"`
+}
+
 // newRequester is the constructor for requester
-func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, format string) Requester {
-	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Format: format}
+func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, assertions []string, format string) Requester {
+	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Assertions: assertions, Format: format}
 }
 
 // run performs the call
@@ -92,7 +117,35 @@ func (r *Requester) run() Outcome {
 	rt.stop()
 	outcome.StatusCode = res.StatusCode
 	r.applyMetricsToOutcome(rt, &outcome)
+	r.executeAssertions(&outcome)
 	return outcome
+}
+
+// executeAssertions will execute all assertions and store the results in outcome
+func (r *Requester) executeAssertions(outcome *Outcome) {
+	for _, assertion := range r.Assertions {
+		env := map[string]interface{}{"Outcome": *outcome}
+		program, err := expr.Compile(assertion, expr.Env(env))
+		if err != nil {
+			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
+			break
+		}
+		result, err := expr.Run(program, env)
+		if err != nil {
+			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
+			break
+		}
+		switch v := result.(type) {
+		case int:
+			outcome.Checks = append(outcome.Checks, Check{v == 1, v, assertion})
+		case bool:
+			result = strconv.FormatBool(v)
+			outcome.Checks = append(outcome.Checks, Check{v, v, assertion})
+		case string:
+			result = v
+			outcome.Checks = append(outcome.Checks, Check{strings.ToLower(strings.TrimSpace(v)) != "ok", v, assertion})
+		}
+	}
 }
 
 // applyMetricsToOutcome takes the data from the tracer and applies them to the outcome

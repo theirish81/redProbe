@@ -27,6 +27,17 @@ func printOutcomeToCLI(outcome Outcome) {
 	fmt.Printf("%sTLS:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.TLS)
 	fmt.Printf("%sTTFB:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.TTFB)
 	fmt.Printf("%sData:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.Transfer)
+	if len(outcome.Checks) > 0 {
+		fmt.Printf("%sAssertions:\n", colorWhite)
+		for _, check := range outcome.Checks {
+			if check.Success {
+				fmt.Print(colorGreen)
+			} else {
+				fmt.Printf(colorRed)
+			}
+			fmt.Println(check.Assertion, "->", check.Output)
+		}
+	}
 	fmt.Println(colorReset)
 }
 

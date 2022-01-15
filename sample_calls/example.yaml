@@ -1,3 +1,6 @@
 url: https://www.example.com
 headers:
   user-agent: redChecker/1
+assertions:
+  - Outcome.StatusCode == 200
+  - Outcome.Metrics.DNS.Milliseconds() < 200
