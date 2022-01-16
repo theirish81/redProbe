@@ -32,7 +32,7 @@ jobs:
           name: "build"
           command: |
             env GOOS=darwin GOARCH=amd64 go build -o redprobe-darwin-amd64 && \
-            env GOOS=darwin GOARCH=arm go build -o redprobe-darwin-arm && \
+            env GOOS=darwin GOARCH=arm go build -o redprobe-darwin-arm64 && \
             env GOOS=windows GOARCH=am64 go build -o redprobe-windows-amd64 && \
             env GOOS=linux GOARCH=am64 go build -o redprobe-linux-amd64
 # Invoke jobs via workflows
