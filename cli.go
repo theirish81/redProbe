@@ -83,7 +83,7 @@ func statusInColor(outcome Outcome) string {
 	return colorRed + strconv.Itoa(outcome.StatusCode)
 }
 
-func byteCountDecimal(b int) string {
+func byteCountDecimal(b int64) string {
 	const unit = 1000
 	if b < unit {
 		return fmt.Sprintf("%d B", b)

@@ -6,4 +6,4 @@ assertions:
   - Outcome.StatusCode == 200
   - Outcome.Size > 0
   - Outcome.Metrics.DNS.Milliseconds() < 200
-  - Outcome.Metrics.RT.Seconds() < 1
+  - Outcome.Metrics.RT.Seconds() < 2
