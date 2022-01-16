@@ -65,7 +65,7 @@ func prettyPrintOutcomeToCLI(outcome Outcome) {
 			} else {
 				fmt.Printf(colorRed)
 			}
-			fmt.Println(check.Assertion, "->", check.Output)
+			fmt.Println("("+check.Assertion+")", "==", check.Output)
 		}
 	}
 	fmt.Println(colorReset)
