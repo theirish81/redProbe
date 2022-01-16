@@ -40,9 +40,8 @@ jobs:
       - attach_workspace:
           at: .
       - run:
-          VERSION=${CIRCLE_TAG}
           command: |
-            VERSION=v1.2.3
+            VERSION=${CIRCLE_TAG}
             ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
 workflows:
   build-workflow:
