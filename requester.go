@@ -130,12 +130,12 @@ func executeAssertions(assertions []string, outcome *Outcome) {
 		program, err := expr.Compile(assertion, expr.Env(env))
 		if err != nil {
 			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
-			break
+			continue
 		}
 		result, err := expr.Run(program, env)
 		if err != nil {
 			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
-			break
+			continue
 		}
 		switch v := result.(type) {
 		case int:
@@ -145,7 +145,7 @@ func executeAssertions(assertions []string, outcome *Outcome) {
 			outcome.Checks = append(outcome.Checks, Check{v, v, assertion})
 		case string:
 			result = v
-			outcome.Checks = append(outcome.Checks, Check{strings.ToLower(strings.TrimSpace(v)) != "ok", v, assertion})
+			outcome.Checks = append(outcome.Checks, Check{strings.ToLower(strings.TrimSpace(v)) == "ok", v, assertion})
 		}
 	}
 }
