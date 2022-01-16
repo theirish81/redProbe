@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"github.com/antonmedv/expr"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -54,6 +53,7 @@ type Requester struct {
 type Outcome struct {
 	Requester  Requester `json:"request"`
 	StatusCode int       `json:"statusCode"`
+	Size       int       `json:"size"`
 	Metrics    Metrics   `json:"metrics"`
 	Err        error     `json:"error"`
 	Checks     []Check   `json:"checks"`
@@ -110,10 +110,12 @@ func (r *Requester) run() Outcome {
 		applyMetricsToOutcome(rt, &outcome)
 		return outcome
 	}
-	_, outcome.Err = io.Copy(ioutil.Discard, res.Body)
+	resBody, err := ioutil.ReadAll(res.Body)
+	outcome.Err = err
 	if res.Body != nil {
 		_ = res.Body.Close()
 	}
+	outcome.Size = len(resBody)
 	rt.stop()
 	outcome.StatusCode = res.StatusCode
 	applyMetricsToOutcome(rt, &outcome)

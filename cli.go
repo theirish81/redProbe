@@ -40,8 +40,13 @@ func prettyPrintJsonToCLI(outcome Outcome) {
 
 // prettyPrintOutcomeToCLI will print the probe outcome to the CLI, pretty-printed
 func prettyPrintOutcomeToCLI(outcome Outcome) {
+	fmt.Printf("%sRequest:\n", colorWhite)
+	fmt.Printf("%sMethod:\t%s%s\n", colorCyan, colorReset, outcome.Requester.Method)
+	fmt.Printf("%sURL:\t%s%s\n", colorCyan, colorReset, outcome.Requester.Url)
+	fmt.Printf("%sT/Out:\t%s%s\n", colorCyan, colorReset, outcome.Requester.Timeout)
 	fmt.Printf("%sResponse:\n", colorWhite)
 	fmt.Printf("%sStatus:\t%s\n", colorCyan, statusInColor(outcome))
+	fmt.Printf("%sSize:\t%s%s\n", colorCyan, colorReset, byteCountDecimal(outcome.Size))
 	if outcome.Err != nil {
 		fmt.Printf("%sError:\t%s\n", colorRed, outcome.Err)
 	}
@@ -76,4 +81,17 @@ func statusInColor(outcome Outcome) string {
 
 	}
 	return colorRed + strconv.Itoa(outcome.StatusCode)
+}
+
+func byteCountDecimal(b int) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := unit, 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }
