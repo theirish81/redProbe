@@ -39,15 +39,15 @@ jobs:
             env GOOS=windows GOARCH=amd64 go build -o artifacts/redprobe-windows-amd64 && \
             env GOOS=linux GOARCH=amd64 go build -o artifacts/redprobe-linux-amd64
       - persist_to_workspace:
-          root: .
+          root: artifacts
           paths:
-            - artifacts/*
+            - *
   release:
     docker:
       - image: cibuilds/github:0.10
     steps:
       - attach_workspace:
-          at: ./artifacts
+          at: .
       - run:
           name: "Publish Release on GitHub"
           #VERSION=${CIRCLE_TAG}
