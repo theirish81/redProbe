@@ -15,12 +15,18 @@ jobs:
     steps:
       - checkout
       - run:
+          name: "dependencies"
+          command: "go get"
+      - run:
           name: "Run tests"
           command: "go test"
   build:
     docker:
       - image: golang:latest
     steps:
+      - run:
+          name: "dependencies"
+          command: "go get"
       - run:
           name: "build software"
           command: "go build -o redprobe"
