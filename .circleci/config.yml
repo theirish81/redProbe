@@ -49,6 +49,9 @@ jobs:
       - attach_workspace:
           at: .
       - run:
+          name: "debug"
+          command: echo artifacts/
+      - run:
           name: "Publish Release on GitHub"
           #VERSION=${CIRCLE_TAG}
           command: |
