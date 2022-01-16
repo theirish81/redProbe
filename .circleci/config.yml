@@ -5,18 +5,6 @@ version: 2.1
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  init:
-    docker:
-      - image: golang:latest
-    steps:
-      - checkout
-      - run:
-          name: "dependencies"
-          command: "go get"
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
   test:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
@@ -25,6 +13,10 @@ jobs:
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
+      - checkout
+      - run:
+          name: "dependencies"
+          command: "go get"
       - run:
           name: "Run tests"
           command: "go test"
@@ -32,6 +24,7 @@ jobs:
     docker:
       - image: golang:latest
     steps:
+      - checkout
       - run:
           name: "dependencies"
           command: "go get"
@@ -43,10 +36,7 @@ jobs:
 workflows:
   build-workflow:
     jobs:
-      - init
-      - test:
-          requires:
-            - init
+      - test
       - build:
           requires:
             - test
