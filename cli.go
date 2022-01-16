@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 )
 
@@ -14,8 +16,30 @@ var (
 	colorWhite  = "\033[37m"
 )
 
-// printOutcomeToCLI will print the probe outcome to the CLI, pretty-printed
-func printOutcomeToCLI(outcome Outcome) {
+func printToCli(outcome Outcome) {
+	switch outcome.Requester.Format {
+	case "json":
+		prettyPrintJsonToCLI(outcome)
+	default:
+		prettyPrintOutcomeToCLI(outcome)
+	}
+	if !outcome.isSuccess() {
+		os.Exit(1)
+	}
+}
+
+// prettyPrintJsonToCLI will print the probe outcome in JSON to the CLI
+func prettyPrintJsonToCLI(outcome Outcome) {
+	data, err := json.MarshalIndent(outcome, "", "\t")
+	if err != nil {
+		fmt.Println("Could not marshal the output: ", err.Error())
+		os.Exit(1)
+	}
+	fmt.Println(string(data))
+}
+
+// prettyPrintOutcomeToCLI will print the probe outcome to the CLI, pretty-printed
+func prettyPrintOutcomeToCLI(outcome Outcome) {
 	fmt.Printf("%sResponse:\n", colorWhite)
 	fmt.Printf("%sStatus:\t%s\n", colorCyan, statusInColor(outcome))
 	if outcome.Err != nil {
@@ -27,6 +51,7 @@ func printOutcomeToCLI(outcome Outcome) {
 	fmt.Printf("%sTLS:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.TLS)
 	fmt.Printf("%sTTFB:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.TTFB)
 	fmt.Printf("%sData:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.Transfer)
+	fmt.Printf("%sRT:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.RT)
 	if len(outcome.Checks) > 0 {
 		fmt.Printf("%sAssertions:\n", colorWhite)
 		for _, check := range outcome.Checks {

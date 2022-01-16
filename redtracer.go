@@ -88,6 +88,11 @@ func (rt *RedTracer) transfer() time.Duration {
 	return positiveOrZero(rt.complete.Sub(rt.firstByte))
 }
 
+// rt is the full round-trip time
+func (rt *RedTracer) rt() time.Duration {
+	return positiveOrZero(rt.complete.Sub(rt.connStart))
+}
+
 // positiveOrZero will return the provided duration if it's greater than zero, or zero otherwise
 func positiveOrZero(duration time.Duration) time.Duration {
 	if duration.Nanoseconds() > 0 {

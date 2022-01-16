@@ -80,6 +80,7 @@ type Metrics struct {
 	TLS      time.Duration `json:"TLS"`
 	TTFB     time.Duration `json:"TTFB"`
 	Transfer time.Duration `json:"transfer"`
+	RT       time.Duration `json:"rt"`
 }
 
 // Check is the result of an assertion execution
@@ -107,7 +108,7 @@ func (r *Requester) run() Outcome {
 	res, err := client.Do(request)
 	if err != nil {
 		outcome.Err = err
-		r.applyMetricsToOutcome(rt, &outcome)
+		applyMetricsToOutcome(rt, &outcome)
 		return outcome
 	}
 	_, outcome.Err = io.Copy(ioutil.Discard, res.Body)
@@ -116,14 +117,14 @@ func (r *Requester) run() Outcome {
 	}
 	rt.stop()
 	outcome.StatusCode = res.StatusCode
-	r.applyMetricsToOutcome(rt, &outcome)
-	r.executeAssertions(&outcome)
+	applyMetricsToOutcome(rt, &outcome)
+	executeAssertions(r.Assertions, &outcome)
 	return outcome
 }
 
 // executeAssertions will execute all assertions and store the results in outcome
-func (r *Requester) executeAssertions(outcome *Outcome) {
-	for _, assertion := range r.Assertions {
+func executeAssertions(assertions []string, outcome *Outcome) {
+	for _, assertion := range assertions {
 		env := map[string]interface{}{"Outcome": *outcome}
 		program, err := expr.Compile(assertion, expr.Env(env))
 		if err != nil {
@@ -149,6 +150,6 @@ func (r *Requester) executeAssertions(outcome *Outcome) {
 }
 
 // applyMetricsToOutcome takes the data from the tracer and applies them to the outcome
-func (r *Requester) applyMetricsToOutcome(rt *RedTracer, outcome *Outcome) {
-	outcome.Metrics = Metrics{DNS: rt.dns(), TLS: rt.tls(), Conn: rt.conn(), TTFB: rt.ttfb(), Transfer: rt.transfer()}
+func applyMetricsToOutcome(rt *RedTracer, outcome *Outcome) {
+	outcome.Metrics = Metrics{DNS: rt.dns(), TLS: rt.tls(), Conn: rt.conn(), TTFB: rt.ttfb(), Transfer: rt.transfer(), RT: rt.rt()}
 }
