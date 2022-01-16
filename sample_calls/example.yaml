@@ -1,4 +1,5 @@
 url: https://www.example.com
+timeout: 5s
 headers:
   user-agent: redChecker/1
 assertions:

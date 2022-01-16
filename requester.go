@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"github.com/antonmedv/expr"
 	"io"
@@ -18,10 +17,10 @@ type Duration struct {
 	time.Duration
 }
 
-// UnmarshalJSON hides the time.Duration implementation
-func (d *Duration) UnmarshalJSON(b []byte) error {
+// UnmarshalYAML hides the time.Duration implementation
+func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
+	if err := unmarshal(&v); err != nil {
 		return err
 	}
 	switch value := v.(type) {
