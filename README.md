@@ -3,6 +3,6 @@ RedProbe is a simple HTTP probe that will return status code and a detailed brea
 performance metrics.
 
 ## Status
-[![CircleCI](https://circleci.com/gh/theirish81/redProbe/tree/circleci-project-setup.svg?style=svg)](https://circleci.com/gh/theirish81/redProbe/tree/circleci-project-setup)
+[![CircleCI](https://circleci.com/gh/theirish81/redProbe/tree/master.svg?style=svg)](https://circleci.com/gh/theirish81/redProbe/tree/master)
 
 ## WORK IN PROGRESS
