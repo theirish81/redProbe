@@ -54,9 +54,6 @@ workflows:
           requires:
             - test
           filters:
-            branches:
-              only:
-                - master
             tags:
               only: /.*/
             branches:
@@ -66,9 +63,6 @@ workflows:
           requires:
             - build
           filters:
-            branches:
-              only:
-                - master
             tags:
               only: /.*/
             branches:
