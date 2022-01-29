@@ -46,7 +46,10 @@ jobs:
 workflows:
   build-workflow:
     jobs:
-      - test
+      - test:
+          filters:
+            tags:
+              only: /.*/
       - build:
           requires:
             - test
@@ -55,7 +58,10 @@ workflows:
               only:
                 - master
             tags:
-              only: /^v[0-9]+(\.[0-9]+)*$/
+              only: /.*/
+            branches:
+              ignore: /.*/
+
       - release:
           requires:
             - build
@@ -64,4 +70,6 @@ workflows:
               only:
                 - master
             tags:
-              only: /^v[0-9]+(\.[0-9]+)*$/
+              only: /.*/
+            branches:
+              ignore: /.*/
