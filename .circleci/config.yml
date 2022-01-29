@@ -51,17 +51,16 @@ workflows:
           requires:
             - test
           filters:
-            branches:
-              only:
-                - master
             tags:
               only: /^v[0-9]+(\.[0-9]+)*$/
+            branches:
+              ignore: /.*/
+
       - release:
           requires:
             - build
           filters:
-            branches:
-              only:
-                - master
             tags:
               only: /^v[0-9]+(\.[0-9]+)*$/
+            branches:
+              ignore: /.*/
