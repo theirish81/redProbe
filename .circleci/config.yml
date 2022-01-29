@@ -52,7 +52,7 @@ workflows:
             - test
           filters:
             tags:
-              only: /^v[0-9]+(\.[0-9]+)*$/
+              only: /.*/
             branches:
               ignore: /.*/
 
@@ -61,6 +61,6 @@ workflows:
             - build
           filters:
             tags:
-              only: /^v[0-9]+(\.[0-9]+)*$/
+              only: /.*/
             branches:
               ignore: /.*/
