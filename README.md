@@ -73,3 +73,10 @@ assertions:
   - Outcome.Metrics.DNS.Milliseconds() < 200
   - Outcome.Metrics.RT.Seconds() < 2
 ```
+
+### Assertions
+Optionally, you can add assertions as shown in the examples. You can add an `assertions` block in the configuration file
+or add multiple `-A` arguments in the CLI. Assertions are simple expressions and the example pretty much speak for
+themselves.
+
+Assertions will be considered a pass if they return either `true`, `ok`, or `1`.
