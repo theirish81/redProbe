@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/pborman/getopt/v2"
 	"gopkg.in/yaml.v2"
@@ -22,14 +23,23 @@ func main() {
 	config := getopt.StringLong("config", 'c', "", "Path to a config file")
 	getopt.HelpColumn = 50
 	getopt.Parse()
-	var requester Requester
+	requesters := make([]Requester, 0)
 	if *config != "" {
-		requester = requesterFromConfig(*config)
+		requesters = requesterFromConfig(*config)
 	} else {
-		requester = requesterFromCli(*method, *url, *headers, readBody(), *timeout, *assertions, *format)
+		requesters = append(requesters, requesterFromCli(*method, *url, *headers, readBody(), *timeout, *assertions))
 	}
-	outcome := requester.run()
-	printToCli(outcome)
+	outcomes := make([]Outcome, 0)
+	for _, requester := range requesters {
+		outcome := requester.run()
+		outcomes = append(outcomes, outcome)
+	}
+	printToCli(outcomes, *format)
+	for _, outcome := range outcomes {
+		if !outcome.isSuccess() {
+			os.Exit(1)
+		}
+	}
 }
 
 // readBody reads the request body from the standard input, if there's any
@@ -44,23 +54,31 @@ func readBody() []byte {
 }
 
 // requesterFromConfig runs the CLI probe pulling the settings from a configuration file
-func requesterFromConfig(path string) Requester {
+func requesterFromConfig(path string) []Requester {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		fmt.Println("Error reading the configuration file: ", err.Error())
 		os.Exit(1)
 	}
-	req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, []string{}, "console")
-	err = yaml.Unmarshal(data, &req)
-	if err != nil {
-		fmt.Println("Error reading the configuration file: ", err.Error())
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	requesters := make([]Requester, 0)
+	for err == nil {
+		req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, []string{})
+		err = decoder.Decode(&req)
+		if err != nil {
+			break
+		}
+		requesters = append(requesters, req)
+	}
+	if err.Error() != "EOF" {
+		fmt.Println("Error reading configuration file: ", err.Error())
 		os.Exit(1)
 	}
-	return req
+	return requesters
 }
 
 // requesterFromCli runs the command line probe using the parameters passed in the command line
-func requesterFromCli(method string, urlString string, headers []string, body []byte, timeout string, assertions []string, format string) Requester {
+func requesterFromCli(method string, urlString string, headers []string, body []byte, timeout string, assertions []string) Requester {
 	if urlString == "" {
 		getopt.PrintUsage(os.Stdout)
 		os.Exit(1)
@@ -70,7 +88,7 @@ func requesterFromCli(method string, urlString string, headers []string, body []
 		fmt.Println("Could not parse timeout")
 		os.Exit(1)
 	}
-	return newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, assertions, strings.ToLower(format))
+	return newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, assertions)
 }
 
 // arrayToMap turns an array of colon-separated strings into a map

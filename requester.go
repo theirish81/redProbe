@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"github.com/antonmedv/expr"
 	"io"
@@ -39,6 +40,19 @@ func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 }
 
+// RedError is a wrapper for Error so that marshalling is easier and automatic
+type RedError struct {
+	Err error
+}
+
+// MarshalJSON will marshall the error message into JSON
+func (e *RedError) MarshalJSON() (b []byte, err error) {
+	if e.Err == nil {
+		return nil, nil
+	}
+	return json.Marshal(e.Err.Error())
+}
+
 // Requester is the agent performing the request
 type Requester struct {
 	Method     string            `json:"method" yaml:"method"`
@@ -46,7 +60,6 @@ type Requester struct {
 	Headers    map[string]string `json:"headers" yaml:"headers"`
 	Body       string            `json:"body" yaml:"body"`
 	Timeout    Duration          `json:"timeout" yaml:"timeout"`
-	Format     string            `json:"format" yaml:"format"`
 	Assertions []string          `json:"assertions" yaml:"assertions"`
 }
 
@@ -56,7 +69,7 @@ type Outcome struct {
 	StatusCode int       `json:"statusCode"`
 	Size       int64     `json:"size"`
 	Metrics    Metrics   `json:"metrics"`
-	Err        error     `json:"error"`
+	Err        *RedError `json:"error"`
 	Checks     []Check   `json:"checks"`
 }
 
@@ -91,8 +104,8 @@ type Check struct {
 }
 
 // newRequester is the constructor for requester
-func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, assertions []string, format string) Requester {
-	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Assertions: assertions, Format: format}
+func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, assertions []string) Requester {
+	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Assertions: assertions}
 }
 
 // run performs the call
@@ -107,12 +120,15 @@ func (r *Requester) run() Outcome {
 	client := http.Client{Timeout: r.Timeout.Duration}
 	res, err := client.Do(request)
 	if err != nil {
-		outcome.Err = err
+		outcome.Err = &RedError{err}
 		applyMetricsToOutcome(rt, &outcome)
 		return outcome
 	}
 
-	outcome.Size, outcome.Err = io.Copy(ioutil.Discard, res.Body)
+	outcome.Size, err = io.Copy(ioutil.Discard, res.Body)
+	if err != nil {
+		outcome.Err = &RedError{err}
+	}
 	if res.Body != nil {
 		_ = res.Body.Close()
 	}

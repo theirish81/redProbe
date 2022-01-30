@@ -31,7 +31,7 @@ func TestExecuteAssertions(t *testing.T) {
 
 func TestRequester(t *testing.T) {
 	r := newRequester("GET", "https://www.example.com", map[string]string{"Accept": "text/html"}, []byte{},
-		Duration{10 * time.Second}, []string{}, "JSON")
+		Duration{10 * time.Second}, []string{})
 	outcome := r.run()
 	if outcome.StatusCode != 200 {
 		t.Error("Status code is not correct")
@@ -52,7 +52,7 @@ func TestRequester(t *testing.T) {
 
 func TestLoadConfig(t *testing.T) {
 	req := requesterFromConfig("sample_calls/example.yaml")
-	if req.Timeout.Duration.Seconds() != 5 {
+	if req[0].Timeout.Duration.Seconds() != 5 {
 		t.Error("Could not parse duration from config file")
 	}
 }
