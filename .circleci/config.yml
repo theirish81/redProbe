@@ -27,7 +27,7 @@ jobs:
             mkdir artifacts && \
             env GOOS=darwin GOARCH=amd64 go build -o artifacts/redprobe-darwin-amd64 && \
             env GOOS=darwin GOARCH=arm64 go build -o artifacts/redprobe-darwin-arm64 && \
-            env GOOS=windows GOARCH=amd64 go build -o artifacts/redprobe-windows-amd64 && \
+            env GOOS=windows GOARCH=amd64 go build -o artifacts/redprobe-windows-amd64.exe && \
             env GOOS=linux GOARCH=amd64 go build -o artifacts/redprobe-linux-amd64
       - persist_to_workspace:
           root: .

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"strconv"
 )
 
@@ -40,6 +41,7 @@ func prettyPrintJsonToCLI(outcome Outcome) {
 
 // prettyPrintOutcomeToCLI will print the probe outcome to the CLI, pretty-printed
 func prettyPrintOutcomeToCLI(outcome Outcome) {
+	initColors()
 	fmt.Printf("%sRequest:\n", colorWhite)
 	fmt.Printf("%sMethod:\t%s%s\n", colorCyan, colorReset, outcome.Requester.Method)
 	fmt.Printf("%sURL:\t%s%s\n", colorCyan, colorReset, outcome.Requester.Url)
@@ -69,6 +71,17 @@ func prettyPrintOutcomeToCLI(outcome Outcome) {
 		}
 	}
 	fmt.Println(colorReset)
+}
+
+func initColors() {
+	if runtime.GOOS == "windows" {
+		colorReset = ""
+		colorRed = ""
+		colorYellow = ""
+		colorGreen = ""
+		colorCyan = ""
+		colorWhite = ""
+	}
 }
 
 // statusInColor will print the status code in the right color
