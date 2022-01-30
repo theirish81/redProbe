@@ -53,6 +53,10 @@ func (e *RedError) MarshalJSON() (b []byte, err error) {
 	return json.Marshal(e.Err.Error())
 }
 
+func (e *RedError) Error() string {
+	return e.Err.Error()
+}
+
 // Requester is the agent performing the request
 type Requester struct {
 	Method     string            `json:"method" yaml:"method"`
