@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -17,21 +18,28 @@ var (
 	colorWhite  = "\033[37m"
 )
 
-func printToCli(outcome Outcome) {
-	switch outcome.Requester.Format {
+// printToCli will print the outcomes to CLI in the selected format
+func printToCli(outcomes []Outcome, format string) {
+	switch strings.ToLower(format) {
+	case "console":
+		for index, outcome := range outcomes {
+			prettyPrintOutcomeToCLI(outcome)
+			if index < len(outcomes)-1 {
+				fmt.Println("----------------")
+			}
+		}
 	case "json":
-		prettyPrintJsonToCLI(outcome)
-	default:
-		prettyPrintOutcomeToCLI(outcome)
-	}
-	if !outcome.isSuccess() {
-		os.Exit(1)
+		if len(outcomes) == 1 {
+			prettyPrintJsonToCLI(outcomes[0])
+		} else {
+			prettyPrintJsonToCLI(outcomes)
+		}
 	}
 }
 
 // prettyPrintJsonToCLI will print the probe outcome in JSON to the CLI
-func prettyPrintJsonToCLI(outcome Outcome) {
-	data, err := json.MarshalIndent(outcome, "", "\t")
+func prettyPrintJsonToCLI(outcomes interface{}) {
+	data, err := json.MarshalIndent(outcomes, "", "\t")
 	if err != nil {
 		fmt.Println("Could not marshal the output: ", err.Error())
 		os.Exit(1)
@@ -73,6 +81,7 @@ func prettyPrintOutcomeToCLI(outcome Outcome) {
 	fmt.Println(colorReset)
 }
 
+// initColors will initialize the CLI colors based on the OS
 func initColors() {
 	if runtime.GOOS == "windows" {
 		colorReset = ""
@@ -96,6 +105,7 @@ func statusInColor(outcome Outcome) string {
 	return colorRed + strconv.Itoa(outcome.StatusCode)
 }
 
+// byteCountDecimal will make the payload size human readable
 func byteCountDecimal(b int64) string {
 	const unit = 1000
 	if b < unit {

@@ -34,7 +34,7 @@ Headers are provided as couples of key/value pairs, separated by a colon, as in:
 ./redprobe -u https://www.example.com -H 'Accept:text/html' -H 'Key:ABC123'
 ```
 
-### By providing a configuration file
+### By providing a YAML configuration file
 You can provide a configuration file a substitute of all the command line parameters, as in:
 ```yaml
 url: https://www.example.com
@@ -47,3 +47,36 @@ assertions:
   - Outcome.Metrics.DNS.Milliseconds() < 200
   - Outcome.Metrics.RT.Seconds() < 2
 ```
+
+### By providing a multi-document YAML configuration file
+You can structure your YAML to contain multiple configuration files. If you do, RedProbe will execute all calls
+in a sequence. As in:
+```yaml
+url: https://www.example.com
+timeout: 5s
+headers:
+  user-agent: redProbe/1
+assertions:
+  - Outcome.StatusCode == 200
+  - Outcome.Size > 0
+  - Outcome.Metrics.DNS.Milliseconds() < 200
+  - Outcome.Metrics.RT.Seconds() < 2
+---
+
+url: https://github.com/theirish81/redProbe
+timeout: 5s
+headers:
+  user-agent: redProbe/1
+assertions:
+  - Outcome.StatusCode == 200
+  - Outcome.Size > 0
+  - Outcome.Metrics.DNS.Milliseconds() < 200
+  - Outcome.Metrics.RT.Seconds() < 2
+```
+
+### Assertions
+Optionally, you can add assertions as shown in the examples. You can add an `assertions` block in the configuration file
+or add multiple `-A` arguments in the CLI. Assertions are simple expressions and the example pretty much speak for
+themselves.
+
+Assertions will be considered a pass if they return either `true`, `ok`, or `1`.

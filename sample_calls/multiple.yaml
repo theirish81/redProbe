@@ -1,0 +1,20 @@
+url: https://www.example.com
+timeout: 5s
+headers:
+  user-agent: redProbe/1
+assertions:
+  - Outcome.StatusCode == 200
+  - Outcome.Size > 0
+  - Outcome.Metrics.DNS.Milliseconds() < 200
+  - Outcome.Metrics.RT.Seconds() < 2
+---
+
+url: https://github.com/theirish81/redProbe
+timeout: 5s
+headers:
+  user-agent: redProbe/1
+assertions:
+  - Outcome.StatusCode == 200
+  - Outcome.Size > 0
+  - Outcome.Metrics.DNS.Milliseconds() < 200
+  - Outcome.Metrics.RT.Seconds() < 2
