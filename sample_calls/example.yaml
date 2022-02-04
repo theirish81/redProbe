@@ -7,3 +7,5 @@ assertions:
   - Outcome.Size > 0
   - Outcome.Metrics.DNS.Milliseconds() < 200
   - Outcome.Metrics.RT.Seconds() < 2
+annotations:
+  - Response.Header.Get("content-type")

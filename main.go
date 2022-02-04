@@ -20,6 +20,7 @@ func main() {
 	timeout := getopt.StringLong("timeout", 't', "5s", "The request timeout")
 	format := getopt.StringLong("format", 'f', "console", "The output format, either 'console' or 'JSON'")
 	assertions := getopt.ListLong("assertion", 'A', "Assertion")
+	annotations := getopt.ListLong("annotation", 'a', "Annotation")
 	config := getopt.StringLong("config", 'c', "", "Path to a config file")
 	getopt.HelpColumn = 50
 	getopt.Parse()
@@ -27,7 +28,7 @@ func main() {
 	if *config != "" {
 		requesters = requesterFromConfig(*config)
 	} else {
-		requesters = append(requesters, requesterFromCli(*method, *url, *headers, readBody(), *timeout, *assertions))
+		requesters = append(requesters, requesterFromCli(*method, *url, *headers, readBody(), *timeout, *assertions, *annotations))
 	}
 	outcomes := make([]Outcome, 0)
 	for _, requester := range requesters {
@@ -63,7 +64,7 @@ func requesterFromConfig(path string) []Requester {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	requesters := make([]Requester, 0)
 	for err == nil {
-		req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, []string{})
+		req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, []string{}, []string{})
 		err = decoder.Decode(&req)
 		if err != nil {
 			break
@@ -78,7 +79,7 @@ func requesterFromConfig(path string) []Requester {
 }
 
 // requesterFromCli runs the command line probe using the parameters passed in the command line
-func requesterFromCli(method string, urlString string, headers []string, body []byte, timeout string, assertions []string) Requester {
+func requesterFromCli(method string, urlString string, headers []string, body []byte, timeout string, assertions []string, annotations []string) Requester {
 	if urlString == "" {
 		getopt.PrintUsage(os.Stdout)
 		os.Exit(1)
@@ -88,7 +89,7 @@ func requesterFromCli(method string, urlString string, headers []string, body []
 		fmt.Println("Could not parse timeout")
 		os.Exit(1)
 	}
-	return newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, assertions)
+	return newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, assertions, annotations)
 }
 
 // arrayToMap turns an array of colon-separated strings into a map

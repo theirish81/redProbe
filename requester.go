@@ -59,22 +59,24 @@ func (e *RedError) Error() string {
 
 // Requester is the agent performing the request
 type Requester struct {
-	Method     string            `json:"method" yaml:"method"`
-	Url        string            `json:"url" yaml:"url"`
-	Headers    map[string]string `json:"headers" yaml:"headers"`
-	Body       string            `json:"body" yaml:"body"`
-	Timeout    Duration          `json:"timeout" yaml:"timeout"`
-	Assertions []string          `json:"assertions" yaml:"assertions"`
+	Method      string            `json:"method" yaml:"method"`
+	Url         string            `json:"url" yaml:"url"`
+	Headers     map[string]string `json:"headers" yaml:"headers"`
+	Body        string            `json:"body" yaml:"body"`
+	Timeout     Duration          `json:"timeout" yaml:"timeout"`
+	Assertions  []string          `json:"assertions" yaml:"assertions"`
+	Annotations []string          `json:"annotations" yaml:"annotations"`
 }
 
 // Outcome is the result of the conversation
 type Outcome struct {
-	Requester  Requester `json:"request"`
-	StatusCode int       `json:"statusCode"`
-	Size       int64     `json:"size"`
-	Metrics    Metrics   `json:"metrics"`
-	Err        *RedError `json:"error"`
-	Checks     []Check   `json:"checks"`
+	Requester   Requester    `json:"request"`
+	StatusCode  int          `json:"statusCode"`
+	Size        int64        `json:"size"`
+	Metrics     Metrics      `json:"metrics"`
+	Err         *RedError    `json:"error"`
+	Annotations []Annotation `json:"annotations"`
+	Checks      []Check      `json:"checks"`
 }
 
 // isSuccess will return true when no errors happened during the call, and all assertions passed
@@ -107,9 +109,14 @@ type Check struct {
 	Assertion string      `json:"assertion"`
 }
 
+type Annotation struct {
+	Annotation string      `json:"annotation"`
+	Text       interface{} `json:"text"`
+}
+
 // newRequester is the constructor for requester
-func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, assertions []string) Requester {
-	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Assertions: assertions}
+func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, assertions []string, annotations []string) Requester {
+	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Assertions: assertions, Annotations: annotations}
 }
 
 // run performs the call
@@ -138,9 +145,23 @@ func (r *Requester) run() Outcome {
 	}
 	rt.stop()
 	outcome.StatusCode = res.StatusCode
+	executeAnnotations(r.Annotations, &outcome, res)
 	applyMetricsToOutcome(rt, &outcome)
 	executeAssertions(r.Assertions, &outcome)
 	return outcome
+}
+
+func executeAnnotations(annotations []string, outcome *Outcome, response *http.Response) {
+	for _, annotation := range annotations {
+		env := map[string]interface{}{"Response": response}
+		program, err := expr.Compile(annotation, expr.Env(env))
+		if err != nil {
+			outcome.Annotations = append(outcome.Annotations, Annotation{annotation, err.Error()})
+			continue
+		}
+		result, err := expr.Run(program, env)
+		outcome.Annotations = append(outcome.Annotations, Annotation{annotation, result})
+	}
 }
 
 // executeAssertions will execute all assertions and store the results in outcome
