@@ -31,7 +31,7 @@ func TestExecuteAssertions(t *testing.T) {
 
 func TestRequester(t *testing.T) {
 	r := newRequester("GET", "https://www.example.com", map[string]string{"Accept": "text/html"}, []byte{},
-		Duration{10 * time.Second}, []string{})
+		Duration{10 * time.Second}, []string{}, []string{})
 	outcome := r.run()
 	if outcome.StatusCode != 200 {
 		t.Error("Status code is not correct")

@@ -67,6 +67,13 @@ func prettyPrintOutcomeToCLI(outcome Outcome) {
 	fmt.Printf("%sTTFB:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.TTFB)
 	fmt.Printf("%sData:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.Transfer)
 	fmt.Printf("%sRT:\t%s%s\n", colorCyan, colorReset, outcome.Metrics.RT)
+	if len(outcome.Annotations) > 0 {
+		fmt.Printf("%sAnnotations:\n", colorWhite)
+		for _, annotation := range outcome.Annotations {
+			fmt.Printf("%s> %s: %s\n", colorCyan, annotation.Annotation, colorReset)
+			fmt.Println(annotation.Text)
+		}
+	}
 	if len(outcome.Checks) > 0 {
 		fmt.Printf("%sAssertions:\n", colorWhite)
 		for _, check := range outcome.Checks {
