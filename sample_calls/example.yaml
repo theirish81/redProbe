@@ -3,10 +3,10 @@ timeout: 5s
 headers:
   user-agent: redProbe/1
 assertions:
-  - Response.StatusCode == 200
-  - Response.Size > 0
-  - Response.Metrics.DNS.Milliseconds() < 200
-  - Response.Metrics.RT.Seconds() < 2
-  - Response.Header.Get("content-type") == "text/html; charset=UTF-8"
+  - Response.StatusCode==200
+  - Response.Size>0
+  - Response.Metrics.DNS.Milliseconds()<200
+  - Response.Metrics.RT.Seconds()<2
+  - Response.Header.Get("content-type")=="text/html; charset=UTF-8"
 annotations:
   - Response.Header.Get("content-type")
