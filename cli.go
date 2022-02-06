@@ -53,6 +53,7 @@ func buildTable(header ...string) *tablewriter.Table {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	width, _, _ := term.GetSize(0)
+	table.SetColWidth(width/2 - 10)
 	table.SetColMinWidth(0, (width)/2-10)
 	table.SetColMinWidth(1, width/2-10)
 	table.SetAutoWrapText(true)
@@ -105,7 +106,7 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	table.Render()
 	if len(outcome.Annotations) > 0 {
 		fmt.Printf("%sAnnotations:%s\n", colorYellow, colorReset)
-		table = buildTable("Annotation", "Result")
+		table = buildTable("Annotation", "Value")
 		for _, annotation := range outcome.Annotations {
 			table.Append([]string{annotation.Annotation, fmt.Sprintln(annotation.Text)})
 		}
