@@ -151,7 +151,10 @@ func (r *Requester) run() Outcome {
 	}
 	rt := newRedTracer()
 	request = rt.addContext(request)
-	client := http.Client{Timeout: r.Timeout.Duration}
+	client := http.Client{Timeout: r.Timeout.Duration, Transport: &http.Transport{
+		MaxIdleConnsPerHost: 0,
+	},
+	}
 	res, err := client.Do(request)
 	if err != nil {
 		outcome.Err = &RedError{err}
