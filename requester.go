@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/antonmedv/expr"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -68,11 +67,29 @@ type Requester struct {
 	Annotations []string          `json:"annotations" yaml:"annotations"`
 }
 
+type Response struct {
+	*http.Response
+	*Outcome
+	bodyBytes []byte
+}
+
+func (r *Response) JsonMap() map[string]interface{} {
+	intFace := make(map[string]interface{})
+	_ = json.Unmarshal(r.bodyBytes, &intFace)
+	return intFace
+}
+
+func (r *Response) JsonArray() []interface{} {
+	intFace := make([]interface{}, 0)
+	_ = json.Unmarshal(r.bodyBytes, &intFace)
+	return intFace
+}
+
 // Outcome is the result of the conversation
 type Outcome struct {
 	Requester   Requester    `json:"request"`
-	StatusCode  int          `json:"statusCode"`
-	Size        int64        `json:"size"`
+	Status      int          `json:"statusCode"`
+	Size        int          `json:"size"`
 	Metrics     Metrics      `json:"metrics"`
 	Err         *RedError    `json:"error"`
 	Annotations []Annotation `json:"annotations"`
@@ -135,8 +152,8 @@ func (r *Requester) run() Outcome {
 		applyMetricsToOutcome(rt, &outcome)
 		return outcome
 	}
-
-	outcome.Size, err = io.Copy(ioutil.Discard, res.Body)
+	bodyBytes, err := io.ReadAll(res.Body)
+	outcome.Size = len(bodyBytes)
 	if err != nil {
 		outcome.Err = &RedError{err}
 	}
@@ -144,49 +161,50 @@ func (r *Requester) run() Outcome {
 		_ = res.Body.Close()
 	}
 	rt.stop()
-	outcome.StatusCode = res.StatusCode
-	executeAnnotations(r.Annotations, &outcome, res)
+	outcome.Status = res.StatusCode
+	res2 := Response{res, &outcome, bodyBytes}
 	applyMetricsToOutcome(rt, &outcome)
-	executeAssertions(r.Assertions, &outcome)
+	executeAnnotations(r.Annotations, &res2)
+	executeAssertions(r.Assertions, &res2)
 	return outcome
 }
 
-func executeAnnotations(annotations []string, outcome *Outcome, response *http.Response) {
+func executeAnnotations(annotations []string, response *Response) {
 	for _, annotation := range annotations {
-		env := map[string]interface{}{"Response": response}
+		env := map[string]interface{}{"Response": response, "Outcome": response}
 		program, err := expr.Compile(annotation, expr.Env(env))
 		if err != nil {
-			outcome.Annotations = append(outcome.Annotations, Annotation{annotation, err.Error()})
+			response.Annotations = append(response.Annotations, Annotation{annotation, err.Error()})
 			continue
 		}
 		result, err := expr.Run(program, env)
-		outcome.Annotations = append(outcome.Annotations, Annotation{annotation, result})
+		response.Annotations = append(response.Annotations, Annotation{annotation, result})
 	}
 }
 
 // executeAssertions will execute all assertions and store the results in outcome
-func executeAssertions(assertions []string, outcome *Outcome) {
+func executeAssertions(assertions []string, response *Response) {
 	for _, assertion := range assertions {
-		env := map[string]interface{}{"Outcome": *outcome}
+		env := map[string]interface{}{"Response": response, "Outcome": response}
 		program, err := expr.Compile(assertion, expr.Env(env))
 		if err != nil {
-			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
+			response.Checks = append(response.Checks, Check{false, err.Error(), assertion})
 			continue
 		}
 		result, err := expr.Run(program, env)
 		if err != nil {
-			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
+			response.Checks = append(response.Checks, Check{false, err.Error(), assertion})
 			continue
 		}
 		switch v := result.(type) {
 		case int:
-			outcome.Checks = append(outcome.Checks, Check{v == 1, v, assertion})
+			response.Checks = append(response.Checks, Check{v == 1, v, assertion})
 		case bool:
 			result = strconv.FormatBool(v)
-			outcome.Checks = append(outcome.Checks, Check{v, v, assertion})
+			response.Checks = append(response.Checks, Check{v, v, assertion})
 		case string:
 			result = v
-			outcome.Checks = append(outcome.Checks, Check{strings.ToLower(strings.TrimSpace(v)) == "ok", v, assertion})
+			response.Checks = append(response.Checks, Check{strings.ToLower(strings.TrimSpace(v)) == "ok", v, assertion})
 		}
 	}
 }

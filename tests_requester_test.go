@@ -1,17 +1,19 @@
 package main
 
 import (
+	"net/http"
 	"testing"
 	"time"
 )
 
 func TestExecuteAssertions(t *testing.T) {
-	outcome := Outcome{StatusCode: 200, Metrics: Metrics{DNS: 10 * time.Second}}
+	outcome := Outcome{Status: 200, Metrics: Metrics{DNS: 10 * time.Second}}
+	res := Response{&http.Response{StatusCode: 200}, &outcome, nil}
 	executeAssertions([]string{
-		"Outcome.StatusCode==200",
-		"Outcome.Metrics.DNS.Seconds() > 10",
-		"Outcome.Foo",
-		"Outcome.StatusCode==200 ? \"OK\" : \"Nope\""}, &outcome)
+		"Response.StatusCode==200",
+		"Response.Metrics.DNS.Seconds() > 10",
+		"Response.Foo",
+		"Response.StatusCode==200 ? \"OK\" : \"Nope\""}, &res)
 	if !outcome.Checks[0].Success {
 		t.Error("Assertion did not pass")
 	}
@@ -33,7 +35,7 @@ func TestRequester(t *testing.T) {
 	r := newRequester("GET", "https://www.example.com", map[string]string{"Accept": "text/html"}, []byte{},
 		Duration{10 * time.Second}, []string{}, []string{})
 	outcome := r.run()
-	if outcome.StatusCode != 200 {
+	if outcome.Status != 200 {
 		t.Error("Status code is not correct")
 	}
 	if outcome.Metrics.DNS.Nanoseconds() <= 0 {
