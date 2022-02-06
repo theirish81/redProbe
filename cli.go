@@ -6,14 +6,8 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/term"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
-)
-
-var (
-	colorReset  = "\033[0m"
-	colorYellow = "\033[33m"
 )
 
 // printToCli will print the outcomes to CLI in the selected format
@@ -57,12 +51,15 @@ func buildTable(header ...string) *tablewriter.Table {
 	table.SetColMinWidth(0, (width)/2-10)
 	table.SetColMinWidth(1, width/2-10)
 	table.SetAutoWrapText(true)
+	table.SetBorders(tablewriter.Border{Left: true, Right: true, Top: true})
 	table.SetColumnAlignment([]int{tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT})
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoWrapText(true)
 	table.SetHeader(header)
 	table.SetColumnColor(tablewriter.Color(tablewriter.Normal, tablewriter.FgCyanColor),
 		tablewriter.Color(tablewriter.Normal, tablewriter.FgHiWhiteColor))
-	table.SetHeaderColor(tablewriter.Color(tablewriter.Bold, tablewriter.FgCyanColor), tablewriter.Color(tablewriter.Bold, tablewriter.FgCyanColor))
+	table.SetHeaderColor(tablewriter.Color(tablewriter.Bold, tablewriter.BgHiBlackColor, tablewriter.FgWhiteColor),
+		tablewriter.Color(tablewriter.Bold, tablewriter.BgHiBlackColor, tablewriter.FgWhiteColor))
 	return table
 }
 
@@ -78,15 +75,12 @@ func appendSuccess(table *tablewriter.Table, label string, val string) {
 }
 
 func tablePrintOutcomeToCLI(outcome Outcome) {
-	initColors()
-	fmt.Printf("%sRequest:%s\n", colorYellow, colorReset)
-	table := buildTable("Attribute", "Value")
+	table := buildTable("Request", "Value")
 	table.Append([]string{"Method", outcome.Requester.Method})
 	table.Append([]string{"URL", outcome.Requester.Url})
 	table.Append([]string{"Timeout", outcome.Requester.Timeout.String()})
 	table.Render()
-	fmt.Printf("%sResponse:%s\n", colorYellow, colorReset)
-	table = buildTable("Attribute", "Value")
+	table = buildTable("Response", "Value")
 	table.Append([]string{"IP Address", outcome.IpAddress})
 	table.Append([]string{"Status", strconv.Itoa(outcome.Status)})
 	table.Append([]string{"Size", byteCountDecimal(outcome.Size)})
@@ -95,8 +89,10 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	}
 	table.Render()
 	table = buildTable("Metric", "Value")
-	fmt.Printf("%sMetrics:%s\n", colorYellow, colorReset)
 	table.SetHeader([]string{"Metric", "Value"})
+	if len(outcome.Annotations) == 0 && len(outcome.Checks) == 0 {
+		table.SetBorders(tablewriter.Border{Left: true, Right: true, Top: true, Bottom: true})
+	}
 	table.Append([]string{"DNS", outcome.Metrics.DNS.String()})
 	table.Append([]string{"Conn", outcome.Metrics.Conn.String()})
 	table.Append([]string{"TLS", outcome.Metrics.TLS.String()})
@@ -105,16 +101,17 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	table.Append([]string{"RT", outcome.Metrics.RT.String()})
 	table.Render()
 	if len(outcome.Annotations) > 0 {
-		fmt.Printf("%sAnnotations:%s\n", colorYellow, colorReset)
 		table = buildTable("Annotation", "Value")
 		for _, annotation := range outcome.Annotations {
 			table.Append([]string{annotation.Annotation, fmt.Sprintln(annotation.Text)})
+		}
+		if len(outcome.Checks) == 0 {
+			table.SetBorders(tablewriter.Border{Left: true, Right: true, Top: true, Bottom: true})
 		}
 		table.Render()
 	}
 
 	if len(outcome.Checks) > 0 {
-		fmt.Printf("%sAssertions:%s\n", colorYellow, colorReset)
 		table = buildTable("Assertion", "Result")
 		for _, check := range outcome.Checks {
 			output := fmt.Sprint(check.Output)
@@ -125,15 +122,8 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 			}
 
 		}
+		table.SetBorders(tablewriter.Border{Left: true, Right: true, Top: true, Bottom: true})
 		table.Render()
-	}
-}
-
-// initColors will initialize the CLI colors based on the OS
-func initColors() {
-	if runtime.GOOS == "windows" {
-		colorReset = ""
-		colorYellow = ""
 	}
 }
 
