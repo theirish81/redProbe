@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ func TestRequester(t *testing.T) {
 	r := newRequester("GET", "https://www.example.com", map[string]string{"Accept": "text/html"}, []byte{},
 		Duration{10 * time.Second}, []string{}, []string{})
 	outcome := r.run()
+	fmt.Println(outcome)
 	if outcome.Status != 200 {
 		t.Error("Status code is not correct")
 	}
@@ -49,6 +51,21 @@ func TestRequester(t *testing.T) {
 	}
 	if outcome.Metrics.Transfer.Nanoseconds() <= 0 {
 		t.Error("Transfer is not correct")
+	}
+}
+
+func TestJsonConversion(t *testing.T) {
+	j1 := []byte("{\"foo\":\"bar\"}")
+	res := Response{&http.Response{StatusCode: 200}, &Outcome{}, j1}
+	executeAssertions([]string{"Response.JsonMap().foo==\"bar\""}, &res)
+	if !res.Outcome.Checks[0].Success {
+		t.Error("Json conversion assertion did not work")
+	}
+	j2 := []byte("[{\"foo\":\"bar\"}]")
+	res = Response{&http.Response{StatusCode: 200}, &Outcome{}, j2}
+	executeAssertions([]string{"Response.JsonArray()[0].foo==\"bar\""}, &res)
+	if !res.Outcome.Checks[0].Success {
+		t.Error("Json conversion assertion did not work")
 	}
 }
 
