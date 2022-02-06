@@ -26,7 +26,7 @@ func printToCli(outcomes []Outcome, format string) {
 			tablePrintOutcomeToCLI(outcome)
 			if index < len(outcomes)-1 {
 				width, _, _ := term.GetSize(0)
-				for i := 0; i < width-10; i++ {
+				for i := 0; i < width-13; i++ {
 					fmt.Print("*")
 				}
 				fmt.Print("\n")
