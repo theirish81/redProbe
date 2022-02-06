@@ -77,6 +77,7 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	table.Render()
 	fmt.Printf("%sResponse:%s\n", colorYellow, colorReset)
 	table = buildTable("Attribute", "Value")
+	table.Append([]string{"IP Address", outcome.IpAddress})
 	table.Append([]string{"Status", statusInColor(outcome)})
 	table.Append([]string{"Size", byteCountDecimal(outcome.Size)})
 	table.Render()

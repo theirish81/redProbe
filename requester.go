@@ -52,6 +52,7 @@ func (e *RedError) MarshalJSON() (b []byte, err error) {
 	return json.Marshal(e.Err.Error())
 }
 
+// Error returns the rror in string form
 func (e *RedError) Error() string {
 	return e.Err.Error()
 }
@@ -67,18 +68,21 @@ type Requester struct {
 	Annotations []string          `json:"annotations" yaml:"annotations"`
 }
 
+// Response is wrapper around the HTTP response, the outcome and the serialised response body
 type Response struct {
 	*http.Response
 	*Outcome
 	bodyBytes []byte
 }
 
+// JsonMap assumes the response body is a JSON and converts it into a Map
 func (r *Response) JsonMap() map[string]interface{} {
 	intFace := make(map[string]interface{})
 	_ = json.Unmarshal(r.bodyBytes, &intFace)
 	return intFace
 }
 
+// JsonArray assumes the response body is a JSON and converts it into an Array
 func (r *Response) JsonArray() []interface{} {
 	intFace := make([]interface{}, 0)
 	_ = json.Unmarshal(r.bodyBytes, &intFace)
@@ -88,6 +92,7 @@ func (r *Response) JsonArray() []interface{} {
 // Outcome is the result of the conversation
 type Outcome struct {
 	Requester   Requester    `json:"request"`
+	IpAddress   string       `json:"ip_address"`
 	Status      int          `json:"statusCode"`
 	Size        int          `json:"size"`
 	Metrics     Metrics      `json:"metrics"`
@@ -126,6 +131,7 @@ type Check struct {
 	Assertion string      `json:"assertion"`
 }
 
+// Annotation is the result of an annotation execution
 type Annotation struct {
 	Annotation string      `json:"annotation"`
 	Text       interface{} `json:"text"`
@@ -162,6 +168,7 @@ func (r *Requester) run() Outcome {
 	}
 	rt.stop()
 	outcome.Status = res.StatusCode
+	outcome.IpAddress = rt.ipAddress
 	res2 := Response{res, &outcome, bodyBytes}
 	applyMetricsToOutcome(rt, &outcome)
 	executeAnnotations(r.Annotations, &res2)
@@ -169,6 +176,7 @@ func (r *Requester) run() Outcome {
 	return outcome
 }
 
+// executeAnnotations will execute the annotations and store the results in outcome
 func executeAnnotations(annotations []string, response *Response) {
 	for _, annotation := range annotations {
 		env := map[string]interface{}{"Response": response, "Outcome": response}
