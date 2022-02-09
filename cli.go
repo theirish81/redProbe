@@ -6,6 +6,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/term"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -56,31 +57,43 @@ func buildTable(header ...string) *tablewriter.Table {
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoWrapText(true)
 	table.SetHeader(header)
-	table.SetColumnColor(tablewriter.Color(tablewriter.Normal, tablewriter.FgCyanColor),
-		tablewriter.Color(tablewriter.Normal, tablewriter.FgHiWhiteColor))
-	table.SetHeaderColor(tablewriter.Color(tablewriter.Bold, tablewriter.BgHiBlackColor, tablewriter.FgWhiteColor),
-		tablewriter.Color(tablewriter.Bold, tablewriter.BgHiBlackColor, tablewriter.FgWhiteColor))
+	if runtime.GOOS != "windows" {
+		table.SetColumnColor(tablewriter.Color(tablewriter.Normal, tablewriter.FgCyanColor),
+			tablewriter.Color(tablewriter.Normal))
+		table.SetHeaderColor(tablewriter.Color(tablewriter.Bold, tablewriter.BgHiBlackColor, tablewriter.FgHiWhiteColor),
+			tablewriter.Color(tablewriter.Bold, tablewriter.BgHiBlackColor, tablewriter.FgHiWhiteColor))
+	}
 	return table
 }
 
 func appendError(table *tablewriter.Table, label string, val string) {
-	table.Rich([]string{label, val}, []tablewriter.Colors{
-		{tablewriter.Normal, tablewriter.FgHiRedColor},
-		{}})
+	if runtime.GOOS == "windows" {
+		table.Append([]string{label, val})
+	} else {
+		table.Rich([]string{label, val}, []tablewriter.Colors{
+			{tablewriter.Normal, tablewriter.FgHiRedColor},
+			{}})
+	}
+
 }
 func appendSuccess(table *tablewriter.Table, label string, val string) {
-	table.Rich([]string{label, val}, []tablewriter.Colors{
-		{tablewriter.Normal, tablewriter.FgHiGreenColor},
-		{}})
+	if runtime.GOOS == "windows" {
+		table.Append([]string{label, val})
+	} else {
+		table.Rich([]string{label, val}, []tablewriter.Colors{
+			{tablewriter.Normal, tablewriter.FgHiGreenColor},
+			{}})
+	}
+
 }
 
 func tablePrintOutcomeToCLI(outcome Outcome) {
-	table := buildTable("Request", "Value")
+	table := buildTable("Request", "Values")
 	table.Append([]string{"Method", outcome.Requester.Method})
 	table.Append([]string{"URL", outcome.Requester.Url})
 	table.Append([]string{"Timeout", outcome.Requester.Timeout.String()})
 	table.Render()
-	table = buildTable("Response", "Value")
+	table = buildTable("Response", "Values")
 	table.Append([]string{"IP Address", outcome.IpAddress})
 	table.Append([]string{"Status", strconv.Itoa(outcome.Status)})
 	table.Append([]string{"Size", byteCountDecimal(outcome.Size)})
@@ -88,8 +101,7 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 		appendError(table, "Error", outcome.Err.Error())
 	}
 	table.Render()
-	table = buildTable("Metric", "Value")
-	table.SetHeader([]string{"Metric", "Value"})
+	table = buildTable("Metrics", "Values")
 	if len(outcome.Annotations) == 0 && len(outcome.Checks) == 0 {
 		table.SetBorders(tablewriter.Border{Left: true, Right: true, Top: true, Bottom: true})
 	}
@@ -101,7 +113,7 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	table.Append([]string{"RT", outcome.Metrics.RT.String()})
 	table.Render()
 	if len(outcome.Annotations) > 0 {
-		table = buildTable("Annotation", "Value")
+		table = buildTable("Annotations", "Values")
 		for _, annotation := range outcome.Annotations {
 			table.Append([]string{annotation.Annotation, fmt.Sprintln(annotation.Text)})
 		}
@@ -112,7 +124,7 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	}
 
 	if len(outcome.Checks) > 0 {
-		table = buildTable("Assertion", "Result")
+		table = buildTable("Assertions", "Results")
 		for _, check := range outcome.Checks {
 			output := fmt.Sprint(check.Output)
 			if check.Success {
@@ -127,7 +139,7 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	}
 }
 
-// byteCountDecimal will make the payload size human readable
+// byteCountDecimal will make the payload size human-readable
 func byteCountDecimal(b int) string {
 	const unit = 1000
 	if b < unit {
