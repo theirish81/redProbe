@@ -6,6 +6,9 @@ operation matches certain criteria.
 ## Status
 [![CircleCI](https://circleci.com/gh/theirish81/redProbe/tree/master.svg?style=svg)](https://circleci.com/gh/theirish81/redProbe/tree/master)
 
+The software is stable. Due to the more advanced nature of *NIX terminals, the output is remarkably better in Linux and
+OSX, but it does work acceptably well on Windows as well.
+
 ## Download
 Go to the [GitHub Releases Page](https://github.com/theirish81/redProbe/releases) for RedProbe and download the latest
 release for your architecture.
@@ -16,13 +19,16 @@ You can run RedProbe in to ways:
 ### By providing all the parameters in the CLI
 Here are the parameters:
 ```shell
- -A, --assertion=value  Assertion
- -f, --format=value     The output format, either
-                        'console' or 'JSON' [console]
- -H, --header=value     The headers
- -t, --timeout=value    The request timeout [5s]
- -u, --url=value        The URL
- -X, --method=value     The method [GET]
+ -a, --annotation=value  Annotation
+ -A, --assertion=value   Assertion
+ -c, --config=value      Path to a config file
+ -f, --format=value      The output format, either
+                         'console' or 'JSON' [console]
+ -H, --header=value      The headers
+ -s, --skip-ssl          Skips SSL validation
+ -t, --timeout=value     The request timeout [5s]
+ -u, --url=value         The URL
+ -X, --method=value      The method [GET]
 ```
 The bare minimum request is done by providing a URL with `-u` or `--url=` as in:
 ```shell
