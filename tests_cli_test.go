@@ -14,7 +14,7 @@ func TestCli(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 	req := newRequester("GET", "https://www.google.com", map[string]string{"Accept": "text/html"}, []byte{},
-		Duration{10 * time.Second}, []string{}, []string{})
+		Duration{10 * time.Second}, false, []string{}, []string{})
 	outcome := req.run()
 	printToCli([]Outcome{outcome}, "console")
 	outC := make(chan string)
