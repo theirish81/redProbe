@@ -34,7 +34,7 @@ func TestExecuteAssertions(t *testing.T) {
 
 func TestRequester(t *testing.T) {
 	r := newRequester("GET", "https://www.example.com", map[string]string{"Accept": "text/html"}, []byte{},
-		Duration{10 * time.Second}, []string{}, []string{})
+		Duration{10 * time.Second}, false, []string{}, []string{})
 	outcome := r.run()
 	fmt.Println(outcome)
 	if outcome.Status != 200 {
