@@ -22,13 +22,14 @@ func main() {
 	assertions := getopt.ListLong("assertion", 'A', "Assertion")
 	annotations := getopt.ListLong("annotation", 'a', "Annotation")
 	config := getopt.StringLong("config", 'c', "", "Path to a config file")
+	skipSSL := getopt.BoolLong("skip-ssl", 's', "Skips SSL validation")
 	getopt.HelpColumn = 50
 	getopt.Parse()
 	requesters := make([]Requester, 0)
 	if *config != "" {
 		requesters = requesterFromConfig(*config)
 	} else {
-		requesters = append(requesters, requesterFromCli(*method, *url, *headers, readBody(), *timeout, *assertions, *annotations))
+		requesters = append(requesters, requesterFromCli(*method, *url, *headers, readBody(), *timeout, *skipSSL, *assertions, *annotations))
 	}
 	outcomes := make([]Outcome, 0)
 	for _, requester := range requesters {
@@ -64,7 +65,7 @@ func requesterFromConfig(path string) []Requester {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	requesters := make([]Requester, 0)
 	for err == nil {
-		req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, []string{}, []string{})
+		req := newRequester("GET", "", make(map[string]string), make([]byte, 0), Duration{5 * time.Second}, false, []string{}, []string{})
 		err = decoder.Decode(&req)
 		if err != nil {
 			break
@@ -79,7 +80,8 @@ func requesterFromConfig(path string) []Requester {
 }
 
 // requesterFromCli runs the command line probe using the parameters passed in the command line
-func requesterFromCli(method string, urlString string, headers []string, body []byte, timeout string, assertions []string, annotations []string) Requester {
+func requesterFromCli(method string, urlString string, headers []string, body []byte, timeout string, skipSSL bool,
+	assertions []string, annotations []string) Requester {
 	if urlString == "" {
 		getopt.PrintUsage(os.Stdout)
 		os.Exit(1)
@@ -89,7 +91,8 @@ func requesterFromCli(method string, urlString string, headers []string, body []
 		fmt.Println("Could not parse timeout")
 		os.Exit(1)
 	}
-	return newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, assertions, annotations)
+	return newRequester(strings.ToUpper(method), urlString, arrayToMap(headers), body, Duration{d}, skipSSL,
+		assertions, annotations)
 }
 
 // arrayToMap turns an array of colon-separated strings into a map

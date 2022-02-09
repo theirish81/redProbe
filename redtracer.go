@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/http/httptrace"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,7 @@ type RedTracer struct {
 	tlsEnd      time.Time
 	firstByte   time.Time
 	complete    time.Time
+	ipAddress   string
 }
 
 // newRedTracer is the constructor for RedTracer
@@ -32,6 +34,12 @@ func newRedTracer() *RedTracer {
 		},
 		ConnectStart: func(network, addr string) {
 			rt.connStart = time.Now()
+		},
+		GotConn: func(info httptrace.GotConnInfo) {
+			rt.ipAddress = info.Conn.RemoteAddr().String()
+			if strings.Contains(rt.ipAddress, ":") {
+				rt.ipAddress = strings.SplitN(rt.ipAddress, ":", 2)[0]
+			}
 		},
 		ConnectDone: func(network, addr string, err error) {
 			rt.connDone = time.Now()

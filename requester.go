@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"github.com/antonmedv/expr"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -53,6 +53,7 @@ func (e *RedError) MarshalJSON() (b []byte, err error) {
 	return json.Marshal(e.Err.Error())
 }
 
+// Error returns the rror in string form
 func (e *RedError) Error() string {
 	return e.Err.Error()
 }
@@ -66,13 +67,36 @@ type Requester struct {
 	Timeout     Duration          `json:"timeout" yaml:"timeout"`
 	Assertions  []string          `json:"assertions" yaml:"assertions"`
 	Annotations []string          `json:"annotations" yaml:"annotations"`
+	SkipSSL     bool              `json:"skipSSL" yaml:"skipSSL"`
+}
+
+// Response is wrapper around the HTTP response, the outcome and the serialised response body
+type Response struct {
+	*http.Response
+	*Outcome
+	bodyBytes []byte
+}
+
+// JsonMap assumes the response body is a JSON and converts it into a Map
+func (r *Response) JsonMap() map[string]interface{} {
+	intFace := make(map[string]interface{})
+	_ = json.Unmarshal(r.bodyBytes, &intFace)
+	return intFace
+}
+
+// JsonArray assumes the response body is a JSON and converts it into an Array
+func (r *Response) JsonArray() []interface{} {
+	intFace := make([]interface{}, 0)
+	_ = json.Unmarshal(r.bodyBytes, &intFace)
+	return intFace
 }
 
 // Outcome is the result of the conversation
 type Outcome struct {
 	Requester   Requester    `json:"request"`
-	StatusCode  int          `json:"statusCode"`
-	Size        int64        `json:"size"`
+	IpAddress   string       `json:"ip_address"`
+	Status      int          `json:"statusCode"`
+	Size        int          `json:"size"`
 	Metrics     Metrics      `json:"metrics"`
 	Err         *RedError    `json:"error"`
 	Annotations []Annotation `json:"annotations"`
@@ -109,14 +133,17 @@ type Check struct {
 	Assertion string      `json:"assertion"`
 }
 
+// Annotation is the result of an annotation execution
 type Annotation struct {
 	Annotation string      `json:"annotation"`
 	Text       interface{} `json:"text"`
 }
 
 // newRequester is the constructor for requester
-func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, assertions []string, annotations []string) Requester {
-	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Assertions: assertions, Annotations: annotations}
+func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, skipSSL bool,
+	assertions []string, annotations []string) Requester {
+	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, SkipSSL: skipSSL,
+		Assertions: assertions, Annotations: annotations}
 }
 
 // run performs the call
@@ -128,15 +155,21 @@ func (r *Requester) run() Outcome {
 	}
 	rt := newRedTracer()
 	request = rt.addContext(request)
-	client := http.Client{Timeout: r.Timeout.Duration}
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: 0,
+	}
+	if r.SkipSSL {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	client := http.Client{Timeout: r.Timeout.Duration, Transport: transport}
 	res, err := client.Do(request)
 	if err != nil {
 		outcome.Err = &RedError{err}
 		applyMetricsToOutcome(rt, &outcome)
 		return outcome
 	}
-
-	outcome.Size, err = io.Copy(ioutil.Discard, res.Body)
+	bodyBytes, err := io.ReadAll(res.Body)
+	outcome.Size = len(bodyBytes)
 	if err != nil {
 		outcome.Err = &RedError{err}
 	}
@@ -144,49 +177,52 @@ func (r *Requester) run() Outcome {
 		_ = res.Body.Close()
 	}
 	rt.stop()
-	outcome.StatusCode = res.StatusCode
-	executeAnnotations(r.Annotations, &outcome, res)
+	outcome.Status = res.StatusCode
+	outcome.IpAddress = rt.ipAddress
+	res2 := Response{res, &outcome, bodyBytes}
 	applyMetricsToOutcome(rt, &outcome)
-	executeAssertions(r.Assertions, &outcome)
+	executeAnnotations(r.Annotations, &res2)
+	executeAssertions(r.Assertions, &res2)
 	return outcome
 }
 
-func executeAnnotations(annotations []string, outcome *Outcome, response *http.Response) {
+// executeAnnotations will execute the annotations and store the results in outcome
+func executeAnnotations(annotations []string, response *Response) {
 	for _, annotation := range annotations {
-		env := map[string]interface{}{"Response": response}
+		env := map[string]interface{}{"Response": response, "Outcome": response}
 		program, err := expr.Compile(annotation, expr.Env(env))
 		if err != nil {
-			outcome.Annotations = append(outcome.Annotations, Annotation{annotation, err.Error()})
+			response.Annotations = append(response.Annotations, Annotation{annotation, err.Error()})
 			continue
 		}
 		result, err := expr.Run(program, env)
-		outcome.Annotations = append(outcome.Annotations, Annotation{annotation, result})
+		response.Annotations = append(response.Annotations, Annotation{annotation, result})
 	}
 }
 
 // executeAssertions will execute all assertions and store the results in outcome
-func executeAssertions(assertions []string, outcome *Outcome) {
+func executeAssertions(assertions []string, response *Response) {
 	for _, assertion := range assertions {
-		env := map[string]interface{}{"Outcome": *outcome}
+		env := map[string]interface{}{"Response": response, "Outcome": response}
 		program, err := expr.Compile(assertion, expr.Env(env))
 		if err != nil {
-			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
+			response.Checks = append(response.Checks, Check{false, err.Error(), assertion})
 			continue
 		}
 		result, err := expr.Run(program, env)
 		if err != nil {
-			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
+			response.Checks = append(response.Checks, Check{false, err.Error(), assertion})
 			continue
 		}
 		switch v := result.(type) {
 		case int:
-			outcome.Checks = append(outcome.Checks, Check{v == 1, v, assertion})
+			response.Checks = append(response.Checks, Check{v == 1, v, assertion})
 		case bool:
 			result = strconv.FormatBool(v)
-			outcome.Checks = append(outcome.Checks, Check{v, v, assertion})
+			response.Checks = append(response.Checks, Check{v, v, assertion})
 		case string:
 			result = v
-			outcome.Checks = append(outcome.Checks, Check{strings.ToLower(strings.TrimSpace(v)) == "ok", v, assertion})
+			response.Checks = append(response.Checks, Check{strings.ToLower(strings.TrimSpace(v)) == "ok", v, assertion})
 		}
 	}
 }
