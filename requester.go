@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"github.com/antonmedv/expr"
@@ -66,6 +67,7 @@ type Requester struct {
 	Timeout     Duration          `json:"timeout" yaml:"timeout"`
 	Assertions  []string          `json:"assertions" yaml:"assertions"`
 	Annotations []string          `json:"annotations" yaml:"annotations"`
+	SkipSSL     bool              `json:"skipSSL" yaml:"skipSSL"`
 }
 
 // Response is wrapper around the HTTP response, the outcome and the serialised response body
@@ -138,8 +140,10 @@ type Annotation struct {
 }
 
 // newRequester is the constructor for requester
-func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, assertions []string, annotations []string) Requester {
-	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, Assertions: assertions, Annotations: annotations}
+func newRequester(method string, url string, headers map[string]string, body []byte, timeout Duration, skipSSL bool,
+	assertions []string, annotations []string) Requester {
+	return Requester{Method: method, Url: url, Headers: headers, Body: string(body), Timeout: timeout, SkipSSL: skipSSL,
+		Assertions: assertions, Annotations: annotations}
 }
 
 // run performs the call
@@ -151,10 +155,13 @@ func (r *Requester) run() Outcome {
 	}
 	rt := newRedTracer()
 	request = rt.addContext(request)
-	client := http.Client{Timeout: r.Timeout.Duration, Transport: &http.Transport{
+	transport := &http.Transport{
 		MaxIdleConnsPerHost: 0,
-	},
 	}
+	if r.SkipSSL {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	client := http.Client{Timeout: r.Timeout.Duration, Transport: transport}
 	res, err := client.Do(request)
 	if err != nil {
 		outcome.Err = &RedError{err}
