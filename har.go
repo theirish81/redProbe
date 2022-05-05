@@ -6,21 +6,25 @@ import (
 	"time"
 )
 
+// Har is the container of the HAR format output
 type Har struct {
 	Log Log `json:"log"`
 }
 
+// Log is the root of he HAR format output
 type Log struct {
 	Version string  `json:"version"`
 	Creator Creator `json:"creator"`
 	Entries []Entry `json:"entries"`
 }
 
+// Creator is the HAR creator information
 type Creator struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 }
 
+// Entry is one entry in the HAR file
 type Entry struct {
 	StartedDateTime time.Time     `json:"startedDateTime"`
 	Time            int           `json:"time"`
@@ -30,6 +34,7 @@ type Entry struct {
 	Timings         Timings       `json:"timings"`
 }
 
+// Timings is the recorded timings for a HAR entry
 type Timings struct {
 	Blocked int `json:"blocked"`
 	DNS     int `json:"dns"`
@@ -40,6 +45,7 @@ type Timings struct {
 	SSL     int `json:"ssl"`
 }
 
+// EntryRequest is the request of a HAR entry
 type EntryRequest struct {
 	Method      string         `json:"method"`
 	HttpVersion string         `json:"httpVersion"`
@@ -52,11 +58,13 @@ type EntryRequest struct {
 	BodySize    int            `json:"bodySize"`
 }
 
+// EntryPair is a name/value entry for the HAR file
 type EntryPair struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
+// EntryCookie is a cookie definition for the HAR file
 type EntryCookie struct {
 	Name     string    `json:"name"`
 	Value    string    `json:"value"`
@@ -67,16 +75,19 @@ type EntryCookie struct {
 	Secure   bool      `json:"secure"`
 }
 
+// NewEntryCookie is the constructor for EntryCookie
 func NewEntryCookie(cookie *http.Cookie) EntryCookie {
 	return EntryCookie{Name: cookie.Name, Value: cookie.Value, Path: cookie.Path, Domain: cookie.Domain,
 		Expires: cookie.Expires, HttpOnly: cookie.HttpOnly, Secure: cookie.Secure}
 }
 
+// EntryPostData is the container of post data for the HAR file
 type EntryPostData struct {
 	MimeType string `json:"mimeType"`
 	Text     string `json:"text"`
 }
 
+// EntryResponse is the response definition for an HAR file entry
 type EntryResponse struct {
 	Status      int           `json:"status"`
 	StatusText  string        `json:"statusText"`
@@ -89,12 +100,14 @@ type EntryResponse struct {
 	Content     *EntryContent `json:"content"`
 }
 
+// EntryContent is the content definition for a HAR file entry
 type EntryContent struct {
 	Size     int    `json:"size"`
 	MimeType string `json:"mimeType"`
 	Text     string `json:"text"`
 }
 
+// toHar converts an array of "outcomes" to a Har object
 func toHar(outcomes []Outcome) Har {
 	log := Log{Creator: Creator{Name: "RedProbe", Version: "1.0.0"}}
 	log.Version = "1.2"

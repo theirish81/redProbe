@@ -198,6 +198,7 @@ func (r *Requester) run() Outcome {
 	return outcome
 }
 
+// getContentType retrieves the content type from the request headers
 func (r *Requester) getContentType() string {
 	if res, ok := r.Headers["Content-Type"]; ok {
 		return res

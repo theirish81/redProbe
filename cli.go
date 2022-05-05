@@ -47,6 +47,7 @@ func prettyPrintJsonToCLI(outcomes interface{}) {
 	fmt.Println(string(data))
 }
 
+// prettyPrintHarToCLI will convert an array of "outcomes" to a Har object, and pretty print it to the shell
 func prettyPrintHarToCLI(outcomes []Outcome) {
 	prettyPrintJsonToCLI(toHar(outcomes))
 }
