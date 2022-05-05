@@ -28,6 +28,6 @@ func TestCli(t *testing.T) {
 	d2 := <-outC
 	if !strings.Contains(d2, "https://www.google.com") ||
 		!strings.Contains(d2, "DNS") {
-		t.Error("Response not coherent")
+		t.Error("ResponseOutcomeWrapper not coherent")
 	}
 }

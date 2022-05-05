@@ -2,19 +2,17 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"testing"
 	"time"
 )
 
 func TestExecuteAssertions(t *testing.T) {
-	outcome := Outcome{Status: 200, Metrics: Metrics{DNS: 10 * time.Second}}
-	res := Response{&http.Response{StatusCode: 200}, &outcome, nil}
+	outcome := Outcome{StatusCode: 200, Metrics: Metrics{DNS: 10 * time.Second}}
 	executeAssertions([]string{
-		"Response.StatusCode==200",
-		"Response.Metrics.DNS.Seconds() > 10",
-		"Response.Foo",
-		"Response.StatusCode==200 ? \"OK\" : \"Nope\""}, &res)
+		"Outcome.StatusCode==200",
+		"Outcome.Metrics.DNS.Seconds() > 10",
+		"Outcome.Foo",
+		"Outcome.StatusCode==200 ? \"OK\" : \"Nope\""}, &outcome)
 	if !outcome.Checks[0].Success {
 		t.Error("Assertion did not pass")
 	}
@@ -37,7 +35,7 @@ func TestRequester(t *testing.T) {
 		Duration{10 * time.Second}, false, []string{}, []string{})
 	outcome := r.run()
 	fmt.Println(outcome)
-	if outcome.Status != 200 {
+	if outcome.StatusCode != 200 {
 		t.Error("Status code is not correct")
 	}
 	if outcome.Metrics.DNS.Nanoseconds() <= 0 {
@@ -56,15 +54,15 @@ func TestRequester(t *testing.T) {
 
 func TestJsonConversion(t *testing.T) {
 	j1 := []byte("{\"foo\":\"bar\"}")
-	res := Response{&http.Response{StatusCode: 200}, &Outcome{}, j1}
-	executeAssertions([]string{"Response.JsonMap().foo==\"bar\""}, &res)
-	if !res.Outcome.Checks[0].Success {
+	res := Outcome{StatusCode: 200, bodyBytes: j1}
+	executeAssertions([]string{"Outcome.JsonMap().foo==\"bar\""}, &res)
+	if !res.Checks[0].Success {
 		t.Error("Json conversion assertion did not work")
 	}
 	j2 := []byte("[{\"foo\":\"bar\"}]")
-	res = Response{&http.Response{StatusCode: 200}, &Outcome{}, j2}
+	res = Outcome{StatusCode: 200, bodyBytes: j2}
 	executeAssertions([]string{"Response.JsonArray()[0].foo==\"bar\""}, &res)
-	if !res.Outcome.Checks[0].Success {
+	if !res.Checks[0].Success {
 		t.Error("Json conversion assertion did not work")
 	}
 }

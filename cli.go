@@ -31,7 +31,10 @@ func printToCli(outcomes []Outcome, format string) {
 		} else {
 			prettyPrintJsonToCLI(outcomes)
 		}
+	case "har":
+		prettyPrintHarToCLI(outcomes)
 	}
+
 }
 
 // prettyPrintJsonToCLI will print the probe outcome in JSON to the CLI
@@ -42,6 +45,10 @@ func prettyPrintJsonToCLI(outcomes interface{}) {
 		os.Exit(1)
 	}
 	fmt.Println(string(data))
+}
+
+func prettyPrintHarToCLI(outcomes []Outcome) {
+	prettyPrintJsonToCLI(toHar(outcomes))
 }
 
 func buildTable(header ...string) *tablewriter.Table {
@@ -93,9 +100,9 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	table.Append([]string{"URL", outcome.Requester.Url})
 	table.Append([]string{"Timeout", outcome.Requester.Timeout.String()})
 	table.Render()
-	table = buildTable("Response", "Values")
+	table = buildTable("ResponseOutcomeWrapper", "Values")
 	table.Append([]string{"IP Address", outcome.IpAddress})
-	table.Append([]string{"Status", strconv.Itoa(outcome.Status)})
+	table.Append([]string{"Status", strconv.Itoa(outcome.StatusCode)})
 	table.Append([]string{"Size", byteCountDecimal(outcome.Size)})
 	if outcome.Err != nil {
 		appendError(table, "Error", outcome.Err.Error())
