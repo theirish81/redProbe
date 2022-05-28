@@ -54,7 +54,7 @@ type EntryRequest struct {
 	HeadersSize int            `json:"headersSize"`
 	Cookies     []interface{}  `json:"cookies"`
 	QueryString []EntryPair    `json:"queryString"`
-	PostData    *EntryPostData `json:"postData"`
+	PostData    *EntryPostData `json:"postData,omitempty"`
 	BodySize    int            `json:"bodySize"`
 }
 
