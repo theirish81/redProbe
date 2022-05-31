@@ -33,6 +33,7 @@ func main() {
 	}
 	outcomes := make([]Outcome, 0)
 	for _, requester := range requesters {
+		requester.keepResponse = *format == "har"
 		outcome := requester.run()
 		outcomes = append(outcomes, outcome)
 	}

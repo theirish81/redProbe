@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/antonmedv/expr"
 	"io"
 	"net/http"
@@ -53,54 +54,41 @@ func (e *RedError) MarshalJSON() (b []byte, err error) {
 	return json.Marshal(e.Err.Error())
 }
 
-// Error returns the rror in string form
+// Error returns the error in string form
 func (e *RedError) Error() string {
 	return e.Err.Error()
 }
 
 // Requester is the agent performing the request
 type Requester struct {
-	Method      string            `json:"method" yaml:"method"`
-	Url         string            `json:"url" yaml:"url"`
-	Headers     map[string]string `json:"headers" yaml:"headers"`
-	Body        string            `json:"body" yaml:"body"`
-	Timeout     Duration          `json:"timeout" yaml:"timeout"`
-	Assertions  []string          `json:"assertions" yaml:"assertions"`
-	Annotations []string          `json:"annotations" yaml:"annotations"`
-	SkipSSL     bool              `json:"skipSSL" yaml:"skipSSL"`
-}
-
-// Response is wrapper around the HTTP response, the outcome and the serialised response body
-type Response struct {
-	*http.Response
-	*Outcome
-	bodyBytes []byte
-}
-
-// JsonMap assumes the response body is a JSON and converts it into a Map
-func (r *Response) JsonMap() map[string]interface{} {
-	intFace := make(map[string]interface{})
-	_ = json.Unmarshal(r.bodyBytes, &intFace)
-	return intFace
-}
-
-// JsonArray assumes the response body is a JSON and converts it into an Array
-func (r *Response) JsonArray() []interface{} {
-	intFace := make([]interface{}, 0)
-	_ = json.Unmarshal(r.bodyBytes, &intFace)
-	return intFace
+	Method       string            `json:"method" yaml:"method"`
+	Url          string            `json:"url" yaml:"url"`
+	Headers      map[string]string `json:"headers" yaml:"headers"`
+	Body         string            `json:"body" yaml:"body"`
+	Timeout      Duration          `json:"timeout" yaml:"timeout"`
+	Assertions   []string          `json:"assertions" yaml:"assertions"`
+	Annotations  []string          `json:"annotations" yaml:"annotations"`
+	SkipSSL      bool              `json:"skipSSL" yaml:"skipSSL"`
+	keepResponse bool
 }
 
 // Outcome is the result of the conversation
 type Outcome struct {
 	Requester   Requester    `json:"request"`
+	StartTime   time.Time    `json:"startTime"`
 	IpAddress   string       `json:"ip_address"`
-	Status      int          `json:"statusCode"`
+	StatusCode  int          `json:"statusCode"`
 	Size        int          `json:"size"`
 	Metrics     Metrics      `json:"metrics"`
 	Err         *RedError    `json:"error"`
 	Annotations []Annotation `json:"annotations"`
 	Checks      []Check      `json:"checks"`
+
+	bodyBytes   []byte
+	Header      http.Header `json:"-"`
+	httpVersion string
+	statusText  string
+	cookies     []*http.Cookie
 }
 
 // isSuccess will return true when no errors happened during the call, and all assertions passed
@@ -114,6 +102,20 @@ func (o *Outcome) isSuccess() bool {
 		}
 	}
 	return true
+}
+
+// JsonMap assumes the response body is a JSON and converts it into a Map
+func (o *Outcome) JsonMap() map[string]interface{} {
+	intFace := make(map[string]interface{})
+	_ = json.Unmarshal(o.bodyBytes, &intFace)
+	return intFace
+}
+
+// JsonArray assumes the response body is a JSON and converts it into an Array
+func (o *Outcome) JsonArray() []interface{} {
+	intFace := make([]interface{}, 0)
+	_ = json.Unmarshal(o.bodyBytes, &intFace)
+	return intFace
 }
 
 // Metrics are the collected metrics
@@ -162,6 +164,7 @@ func (r *Requester) run() Outcome {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	client := http.Client{Timeout: r.Timeout.Duration, Transport: transport}
+	outcome.StartTime = time.Now()
 	res, err := client.Do(request)
 	if err != nil {
 		outcome.Err = &RedError{err}
@@ -177,52 +180,69 @@ func (r *Requester) run() Outcome {
 		_ = res.Body.Close()
 	}
 	rt.stop()
-	outcome.Status = res.StatusCode
+	outcome.StatusCode = res.StatusCode
 	outcome.IpAddress = rt.ipAddress
-	res2 := Response{res, &outcome, bodyBytes}
+	outcome.bodyBytes = bodyBytes
+	outcome.Header = res.Header
+	outcome.httpVersion = fmt.Sprintf("HTTP/%d.%d", res.ProtoMajor, res.ProtoMinor)
+	outcome.statusText = res.Status
+	outcome.cookies = res.Cookies()
 	applyMetricsToOutcome(rt, &outcome)
-	executeAnnotations(r.Annotations, &res2)
-	executeAssertions(r.Assertions, &res2)
+	executeAnnotations(r.Annotations, &outcome)
+	executeAssertions(r.Assertions, &outcome)
+	if !r.keepResponse {
+		outcome.Header = nil
+		outcome.bodyBytes = nil
+		outcome.cookies = nil
+	}
 	return outcome
 }
 
+// getContentType retrieves the content type from the request headers
+func (r *Requester) getContentType() string {
+	if res, ok := r.Headers["Content-Type"]; ok {
+		return res
+	}
+	return r.Headers["content-type"]
+}
+
 // executeAnnotations will execute the annotations and store the results in outcome
-func executeAnnotations(annotations []string, response *Response) {
+func executeAnnotations(annotations []string, outcome *Outcome) {
 	for _, annotation := range annotations {
-		env := map[string]interface{}{"Response": response, "Outcome": response}
+		env := map[string]interface{}{"Response": outcome, "Outcome": outcome}
 		program, err := expr.Compile(annotation, expr.Env(env))
 		if err != nil {
-			response.Annotations = append(response.Annotations, Annotation{annotation, err.Error()})
+			outcome.Annotations = append(outcome.Annotations, Annotation{annotation, err.Error()})
 			continue
 		}
 		result, err := expr.Run(program, env)
-		response.Annotations = append(response.Annotations, Annotation{annotation, result})
+		outcome.Annotations = append(outcome.Annotations, Annotation{annotation, result})
 	}
 }
 
 // executeAssertions will execute all assertions and store the results in outcome
-func executeAssertions(assertions []string, response *Response) {
+func executeAssertions(assertions []string, outcome *Outcome) {
 	for _, assertion := range assertions {
-		env := map[string]interface{}{"Response": response, "Outcome": response}
+		env := map[string]interface{}{"Response": outcome, "Outcome": outcome}
 		program, err := expr.Compile(assertion, expr.Env(env))
 		if err != nil {
-			response.Checks = append(response.Checks, Check{false, err.Error(), assertion})
+			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
 			continue
 		}
 		result, err := expr.Run(program, env)
 		if err != nil {
-			response.Checks = append(response.Checks, Check{false, err.Error(), assertion})
+			outcome.Checks = append(outcome.Checks, Check{false, err.Error(), assertion})
 			continue
 		}
 		switch v := result.(type) {
 		case int:
-			response.Checks = append(response.Checks, Check{v == 1, v, assertion})
+			outcome.Checks = append(outcome.Checks, Check{v == 1, v, assertion})
 		case bool:
 			result = strconv.FormatBool(v)
-			response.Checks = append(response.Checks, Check{v, v, assertion})
+			outcome.Checks = append(outcome.Checks, Check{v, v, assertion})
 		case string:
 			result = v
-			response.Checks = append(response.Checks, Check{strings.ToLower(strings.TrimSpace(v)) == "ok", v, assertion})
+			outcome.Checks = append(outcome.Checks, Check{strings.ToLower(strings.TrimSpace(v)) == "ok", v, assertion})
 		}
 	}
 }
