@@ -100,7 +100,7 @@ func tablePrintOutcomeToCLI(outcome Outcome) {
 	table.Append([]string{"URL", outcome.Requester.Url})
 	table.Append([]string{"Timeout", outcome.Requester.Timeout.String()})
 	table.Render()
-	table = buildTable("ResponseOutcomeWrapper", "Values")
+	table = buildTable("Response", "Values")
 	table.Append([]string{"IP Address", outcome.IpAddress})
 	table.Append([]string{"Status", strconv.Itoa(outcome.StatusCode)})
 	table.Append([]string{"Size", byteCountDecimal(outcome.Size)})
