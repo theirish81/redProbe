@@ -54,7 +54,7 @@ func (e *RedError) MarshalJSON() (b []byte, err error) {
 	return json.Marshal(e.Err.Error())
 }
 
-// Error returns the rror in string form
+// Error returns the error in string form
 func (e *RedError) Error() string {
 	return e.Err.Error()
 }
