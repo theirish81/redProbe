@@ -23,7 +23,7 @@ Here are the parameters:
  -A, --assertion=value   Assertion
  -c, --config=value      Path to a config file
  -f, --format=value      The output format, either
-                         'console' or 'JSON' [console]
+                         'console', 'JSON' or 'HAR' [console]
  -H, --header=value      The headers
  -s, --skip-ssl          Skips SSL validation
  -t, --timeout=value     The request timeout [5s]
