@@ -8,12 +8,11 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
 )
 
 // printToCli will print the outcomes to CLI in the selected format
 func printToCli(outcomes []Outcome, format string) {
-	switch strings.ToLower(format) {
+	switch format {
 	case "console":
 		for index, outcome := range outcomes {
 			tablePrintOutcomeToCLI(outcome)

@@ -18,7 +18,7 @@ func main() {
 	url := getopt.StringLong("url", 'u', "", "The URL")
 	headers := getopt.ListLong("header", 'H', "The headers")
 	timeout := getopt.StringLong("timeout", 't', "5s", "The request timeout")
-	format := getopt.StringLong("format", 'f', "console", "The output format, either 'console' or 'JSON'")
+	format := getopt.StringLong("format", 'f', "console", "The output format, either 'console', 'JSON' or 'HAR'")
 	assertions := getopt.ListLong("assertion", 'A', "Assertion")
 	annotations := getopt.ListLong("annotation", 'a', "Annotation")
 	config := getopt.StringLong("config", 'c', "", "Path to a config file")
@@ -32,6 +32,9 @@ func main() {
 		requesters = append(requesters, requesterFromCli(*method, *url, *headers, readBody(), *timeout, *skipSSL, *assertions, *annotations))
 	}
 	outcomes := make([]Outcome, 0)
+	if format != nil {
+		*format = strings.ToLower(*format)
+	}
 	for _, requester := range requesters {
 		requester.keepResponse = *format == "har"
 		outcome := requester.run()
